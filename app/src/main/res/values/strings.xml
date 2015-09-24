@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">EditDigits</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="input_digits">input digits</string>
+    <string name="original">original edittext</string>
+</resources>
