@@ -9,7 +9,6 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -29,7 +28,7 @@ public class EditDigits extends EditText {
 
     private static final long KEY_INTERVAL = 50;
 
-    private static final String period = "\\.";
+    private static final char period = '.';
 
     private EditDigitsHandler handler;
 
@@ -65,7 +64,6 @@ public class EditDigits extends EditText {
         //setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         setGravity(Gravity.RIGHT);
         addTextChangedListener(new DigitsWatcher());
-
     }
 
     @Override
@@ -91,9 +89,13 @@ public class EditDigits extends EditText {
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DEL) {
             //blockHardKey = true;
-            //Log.w("pressed", "down");
             removeFirstCharAtCursorPosition();
             //handler.sendEmptyMessage(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION);
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) {
+            //blockHardKey = true;
+            append(".");
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -134,15 +136,20 @@ public class EditDigits extends EditText {
         return super.dispatchKeyEvent(event);
     }*/
 
+    public double getValue() {
+        String str = getText().toString();
+        int firstIndex = str.indexOf(period);
+        String front = str.substring(0, firstIndex);
+        String end = str.substring(firstIndex + 1, str.length());
+
+        int size = end.length();
+        String value = front + end;
+        return Double.valueOf(value) / Math.pow(10, size);
+    }
+
     private void removeFirstCharAtCursorPosition() {
         String text = getText().toString();
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) == ',') {
-                quantityOfPeriodBeforeCursor++;
-            }
-        }
-        previousCursorPosition = getSelectionStart();
-
+        recordCursorPosition(text);
 
         if (text.length() == 0) {
             return;
@@ -188,7 +195,7 @@ public class EditDigits extends EditText {
 
     private void doSetText(String value) {
         blockSoftKey = true;
-        //setCursorVisible(false);
+        setCursorVisible(false);
         try {
             if (TextUtils.isEmpty(value)) {
                 return;
@@ -222,20 +229,17 @@ public class EditDigits extends EditText {
             clearText();
             setText(sb.reverse().toString() + value2);
 
-            //Log.w("size", getText() + " / " + getText().length() + " / " + previousCursorPosition + " - " + quantityOfPeriodBeforeCursor);
-
             previousCursorPosition = previousCursorPosition - quantityOfPeriodBeforeCursor;
             if (previousCursorPosition < 0) {
                 previousCursorPosition = 0;
             }
             quantityOfPeriodBeforeCursor = 0;
             setSelection(previousCursorPosition);
-            setCursorVisible(true);
         } catch (NumberFormatException e) {
             e.printStackTrace();
             clearText();
-            setText("0");
         }
+        setCursorVisible(true);
         blockSoftKey = false;
     }
 
@@ -250,14 +254,7 @@ public class EditDigits extends EditText {
         if (blockSoftKey) {
             return;
         }
-        Log.w("text", s.toString());
-
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) == ',') {
-                quantityOfPeriodBeforeCursor++;
-            }
-        }
-        previousCursorPosition = getSelectionStart();
+        recordCursorPosition(s.toString());
         String str = s.toString().replace(",", "");
         if (TextUtils.isEmpty(str)) {
             clearText();
@@ -265,44 +262,61 @@ public class EditDigits extends EditText {
         }
 
         int firstIndex = str.indexOf(period);
-//        Log.w("period", "" + firstIndex);
         if (firstIndex == 0) {
-            setText("0.");
+            sendSetText("0.");
             return;
         }
 
         String front;
         String end;
-        int length = str.length();
 
         if (firstIndex > -1) {
             int lastIndex = str.lastIndexOf(period);
             if (str.indexOf(period) != lastIndex) {
-                front = str.substring(0, lastIndex - 1);
-                end = str.substring(lastIndex, str.length());
+                front = str.substring(0, lastIndex);
+                end = str.substring(lastIndex + 1, str.length());
                 str = front + end;
-                Log.w("period", str);
-            }
-        }
-
-        if (str.length() > 10) {
-            if (firstIndex > 10) {
-                firstIndex = 10;
+                --previousCursorPosition;
             }
             front = str.substring(0, firstIndex);
             end = str.substring(firstIndex, str.length());
+
+            if (front.length() > 10) {
+                String front1 = str.substring(0, 10);
+                String front2 = str.substring(10, str.length());
+
+                headTrim(front1, front2 + end);
+                return;
+            } else {
+                headTrim(front, end);
+                return;
+            }
+        }
+        if (str.length() > 10) {
+            front = str.substring(0, 10);
+            end = str.substring(10, str.length());
         } else {
             front = str;
             end = "";
         }
+        headTrim(front, end);
+    }
 
+    private void recordCursorPosition(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == ',') {
+                quantityOfPeriodBeforeCursor++;
+            }
+        }
+        previousCursorPosition = getSelectionStart();
+    }
+
+    private void headTrim(String front, String end) {
         Double value = Double.valueOf(front);
         BigDecimal bigDecimal = new BigDecimal(value);
         String retTxt = bigDecimal.toPlainString() + end;
         sendSetText(String.valueOf(retTxt));
     }
-
-
 
     private class DigitsWatcher implements TextWatcher {
         @Override
