@@ -6,12 +6,14 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
@@ -25,12 +27,15 @@ public class EditDigits extends EditText {
     private static final int SET_COMMA = 7462;
     private static final int BRING_CURSOR_TO_LAST_POSITION = 7461;
     private static final int REMOVE_FIRST_CHAR_AT_CURSOR_POSITION = 7460;
+    private static final int HIDE_KEYBOARD = 7459;
 
     private static final long KEY_INTERVAL = 50;
 
     private static final char period = '.';
 
     private EditDigitsHandler handler;
+
+    private Context context;
 
     private int previousCursorPosition;
     private int quantityOfPeriodBeforeCursor;
@@ -41,27 +46,27 @@ public class EditDigits extends EditText {
 
     public EditDigits(Context context) {
         this(context, null);
-        init();
+        init(context);
     }
 
     public EditDigits(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();
+        init(context);
     }
 
     public EditDigits(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init();
+        init(context);
     }
 
-    private void init() {
+    private void init(Context context) {
+        this.context = context;
         blockSoftKey = false;
         blockHardKey = false;
         hasFocus = false;
         handler = new EditDigitsHandler(this);
 
-        //setInputType(InputType.TYPE_CLASS_NUMBER);
-        //setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         setGravity(Gravity.RIGHT);
         addTextChangedListener(new DigitsWatcher());
     }
@@ -74,6 +79,7 @@ public class EditDigits extends EditText {
             hasFocus = true;
             handler.sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
         }
+        //handler.sendEmptyMessage(HIDE_KEYBOARD);
         return super.onTouchEvent(event);
     }
 
@@ -81,6 +87,7 @@ public class EditDigits extends EditText {
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
         if (!focused && hasFocus) {
             hasFocus = false;
+            doAfterChanged(getText());
         }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
@@ -94,8 +101,9 @@ public class EditDigits extends EditText {
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) {
-            //blockHardKey = true;
-            append(".");
+            if (getText().toString().indexOf(period) == -1) {
+                append(".");
+            }
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -137,14 +145,27 @@ public class EditDigits extends EditText {
     }*/
 
     public double getValue() {
-        String str = getText().toString();
+        String str = getText().toString().replaceAll(",", "");
+
+        String front;
+        String end;
         int firstIndex = str.indexOf(period);
-        String front = str.substring(0, firstIndex);
-        String end = str.substring(firstIndex + 1, str.length());
+        if (firstIndex == -1) {
+            front = str;
+            end = "";
+        } else {
+            front = str.substring(0, firstIndex);
+            end = str.substring(firstIndex + 1, str.length());
+        }
 
         int size = end.length();
         String value = front + end;
         return Double.valueOf(value) / Math.pow(10, size);
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(this.getWindowToken(), 0);
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -255,7 +276,7 @@ public class EditDigits extends EditText {
             return;
         }
         recordCursorPosition(s.toString());
-        String str = s.toString().replace(",", "");
+        String str = s.toString().replaceAll(",", "");
         if (TextUtils.isEmpty(str)) {
             clearText();
             return;
@@ -320,12 +341,10 @@ public class EditDigits extends EditText {
 
     private class DigitsWatcher implements TextWatcher {
         @Override
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-        }
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
         @Override
-        public void onTextChanged(CharSequence s, int start, int before, int count) {
-        }
+        public void onTextChanged(CharSequence s, int start, int before, int count) {}
 
         @Override
         public void afterTextChanged(Editable s) {
@@ -353,12 +372,15 @@ public class EditDigits extends EditText {
                 case SET_COMMA:
                     String value = (String) msg.obj;
                     klass.doSetText(value);
-                    //sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
                     break;
 
                 case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
                     klass.removeFirstCharAtCursorPosition();
                     sendEmptyMessageDelayed(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION, KEY_INTERVAL);
+                    break;
+
+                case HIDE_KEYBOARD:
+                    klass.hideKeyboard();
                     break;
             }
         }
