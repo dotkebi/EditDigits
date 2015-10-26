@@ -1,12 +1,15 @@
 package com.github.dotkebi.editdigits;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
@@ -18,6 +21,7 @@ import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
 import java.math.BigDecimal;
+import java.util.regex.Pattern;
 
 /**
  * Edit Digits
@@ -32,6 +36,7 @@ public class EditDigits extends EditText {
     private static final long KEY_INTERVAL = 50;
 
     private static final char period = '.';
+    private static final char dash = '-';
 
     private EditDigitsHandler handler;
 
@@ -43,44 +48,58 @@ public class EditDigits extends EditText {
     private boolean blockSoftKey;
     private boolean blockHardKey;
     private boolean hasFocus;
-
-    public EditDigits(Context context) {
-        this(context, null);
-        init(context);
-    }
+    private boolean autoHideKeyboard;
 
     public EditDigits(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context);
+        init(context, attrs);
     }
 
-    public EditDigits(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        init(context);
-    }
-
-    private void init(Context context) {
+    private void init(Context context, AttributeSet attrs) {
         this.context = context;
         blockSoftKey = false;
         blockHardKey = false;
         hasFocus = false;
+
         handler = new EditDigitsHandler(this);
 
-        setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         setGravity(Gravity.RIGHT);
+        setFilters(new InputFilter[] {filterNumberMinus});
         addTextChangedListener(new DigitsWatcher());
+
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
+        if (a != null) {
+            autoHideKeyboard = a.getBoolean(R.styleable.EditDigits_autoHideKeyboard, false);
+            a.recycle();
+        }
+
+        if (autoHideKeyboard) {
+            int type = this.getInputType();
+            this.setInputType(InputType.TYPE_NULL);
+            this.setRawInputType(type);
+            this.setTextIsSelectable(true);
+        }
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public boolean onTouchEvent(@NonNull MotionEvent event) {
         final int action = event.getActionMasked();
 
-        if (action == MotionEvent.ACTION_UP && !hasFocus) {
-            hasFocus = true;
-            handler.sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
+        if (action == MotionEvent.ACTION_DOWN && !hasFocus) {
+            /*hasFocus = true;
+            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);*/
+            initRequestFocus();
         }
-        //handler.sendEmptyMessage(HIDE_KEYBOARD);
+        if (autoHideKeyboard) {
+            handler.sendEmptyMessage(HIDE_KEYBOARD);
+        }
         return super.onTouchEvent(event);
+    }
+
+    public boolean initRequestFocus() {
+        hasFocus = true;
+        handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);
+        return super.requestFocus();
     }
 
     @Override
@@ -100,12 +119,12 @@ public class EditDigits extends EditText {
             //handler.sendEmptyMessage(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION);
             return true;
         }
-        if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) {
+        /*if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) {
             if (getText().toString().indexOf(period) == -1) {
                 append(".");
             }
             return true;
-        }
+        }*/
         return super.onKeyDown(keyCode, event);
     }
 
@@ -143,6 +162,10 @@ public class EditDigits extends EditText {
         }
         return super.dispatchKeyEvent(event);
     }*/
+
+    public void setValue(float value) {
+        setText(String.valueOf(value));
+    }
 
     public double getValue() {
         String str = getText().toString().replaceAll(",", "");
@@ -189,7 +212,8 @@ public class EditDigits extends EditText {
         }
 
         --previousCursorPosition;
-        if (text.charAt(startPosition) == ',') {
+        if (text.charAt(startPosition) == ','
+                || text.charAt(startPosition) == '.') {
             --startPosition;
             --previousCursorPosition;
         }
@@ -216,12 +240,17 @@ public class EditDigits extends EditText {
 
     private void doSetText(String value) {
         blockSoftKey = true;
+        boolean minus = false;
         setCursorVisible(false);
         try {
             if (TextUtils.isEmpty(value)) {
                 return;
             }
             value = value.replaceAll(",", "");
+            if (value.charAt(0) == dash) {
+                minus = true;
+                value = value.substring(1, value.length());
+            }
 
             final int dotPos = value.indexOf('.');
             String value1, value2;
@@ -248,7 +277,8 @@ public class EditDigits extends EditText {
                 sb.append(ch);
             }
             clearText();
-            setText(sb.reverse().toString() + value2);
+            String msg = ((minus) ? dash : "") + sb.reverse().toString() + value2;
+            setText(msg);
 
             previousCursorPosition = previousCursorPosition - quantityOfPeriodBeforeCursor;
             if (previousCursorPosition < 0) {
@@ -333,10 +363,21 @@ public class EditDigits extends EditText {
     }
 
     private void headTrim(String front, String end) {
+        boolean minus = false;
+        if (front.length() > 0 && front.charAt(0) == dash) {
+            minus = true;
+            front = front.replaceAll(String.valueOf(dash), "");
+        }
+
+        if (TextUtils.isEmpty(front)) {
+            sendSetText(String.valueOf(dash));
+            return;
+        }
+
         Double value = Double.valueOf(front);
         BigDecimal bigDecimal = new BigDecimal(value);
         String retTxt = bigDecimal.toPlainString() + end;
-        sendSetText(String.valueOf(retTxt));
+        sendSetText(((minus) ? "-" : "") + String.valueOf(retTxt));
     }
 
     private class DigitsWatcher implements TextWatcher {
@@ -348,9 +389,37 @@ public class EditDigits extends EditText {
 
         @Override
         public void afterTextChanged(Editable s) {
+            if (blockSoftKey) {
+                return;
+            }
+
+            String str = s.toString();
+            int start = str.indexOf(dash);
+            int end = str.lastIndexOf(dash);
+
+            if (s.length() > 0 && start > 0 && end == start
+                    || start != end) {
+                //textFieldInputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                blockSoftKey = true;
+                s.delete(end, s.length());
+                blockSoftKey = false;
+            }
             doAfterChanged(s);
         }
     }
+
+    //BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
+
+
+    private InputFilter filterNumberMinus = new InputFilter() {
+        public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
+            Pattern ps = Pattern.compile("^[0-9,-]*$");
+            if (!ps.matcher(source).matches()) {
+                return "";
+            }
+            return null;
+        }
+    };
 
 
     private static class EditDigitsHandler extends Handler {
@@ -372,6 +441,7 @@ public class EditDigits extends EditText {
                 case SET_COMMA:
                     String value = (String) msg.obj;
                     klass.doSetText(value);
+                    //sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
                     break;
 
                 case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
