@@ -17,7 +17,6 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
@@ -48,7 +47,7 @@ public class EditDigits extends EditText {
     private int quantityOfPeriodBeforeCursor;
 
     private boolean blockSoftKey;
-    private boolean blockHardKey;
+    //private boolean blockHardKey;
     private boolean hasFocus;
     private boolean autoHideKeyboard;
 
@@ -60,7 +59,7 @@ public class EditDigits extends EditText {
     private void init(Context context, AttributeSet attrs) {
         this.context = context;
         blockSoftKey = false;
-        blockHardKey = false;
+        //blockHardKey = false;
         hasFocus = false;
 
         handler = new EditDigitsHandler(this);
@@ -117,54 +116,11 @@ public class EditDigits extends EditText {
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DEL) {
-            //blockHardKey = true;
             removeFirstCharAtCursorPosition();
-            //handler.sendEmptyMessage(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION);
             return true;
         }
-        /*if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) {
-            if (getText().toString().indexOf(period) == -1) {
-                append(".");
-            }
-            return true;
-        }*/
         return super.onKeyDown(keyCode, event);
     }
-
-/*    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DEL) {
-            if (blockHardKey) {// && event.isTracking()) {
-                 Log.w("pressed", "up");
-                //handler.removeMessages(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION);
-                removeFirstCharAtCursorPosition();
-                blockHardKey = false;
-                return true;
-            }
-        }
-        return super.onKeyUp(keyCode, event);
-    }*/
-
-    /*@Override
-    public boolean dispatchKeyEvent(@NonNull KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-
-                blockHardKey = true;
-                handler.sendEmptyMessageDelayed(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION, KEY_INTERVAL);
-                return true;
-
-            } else if (event.getAction() == KeyEvent.ACTION_UP) {
-                if (blockHardKey) {
-                    handler.removeMessages(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION);
-                    //removeFirstCharAtCursorPosition();
-                    blockHardKey = false;
-                    return true;
-                }
-            }
-        }
-        return super.dispatchKeyEvent(event);
-    }*/
 
     public void setValue(float value) {
         doAfterChanged(String.valueOf(value));
@@ -420,13 +376,13 @@ public class EditDigits extends EditText {
         }
     }
 
-    BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
+    //BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
 
 
+    private Pattern pattern = Pattern.compile("^[0-9,.-]*$");
     private InputFilter filterNumberMinus = new InputFilter() {
         public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
-            Pattern ps = Pattern.compile("^[0-9,-]*$");
-            if (!ps.matcher(source).matches()) {
+            if (!pattern.matcher(source).matches()) {
                 return "";
             }
             return null;
