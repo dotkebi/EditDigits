@@ -12,10 +12,12 @@ import android.text.InputType;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.DigitsKeyListener;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
@@ -64,8 +66,9 @@ public class EditDigits extends EditText {
         handler = new EditDigitsHandler(this);
 
         setGravity(Gravity.RIGHT);
-        setFilters(new InputFilter[] {filterNumberMinus});
+        setFilters(new InputFilter[]{filterNumberMinus});
         addTextChangedListener(new DigitsWatcher());
+        setKeyListener(DigitsKeyListener.getInstance("0123456789,.-"));
 
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
         if (a != null) {
@@ -164,7 +167,11 @@ public class EditDigits extends EditText {
     }*/
 
     public void setValue(float value) {
-        setText(String.valueOf(value));
+        doAfterChanged(String.valueOf(value));
+    }
+
+    public void setValue(int value) {
+        doAfterChanged(String.valueOf(value));
     }
 
     public double getValue() {
@@ -294,7 +301,7 @@ public class EditDigits extends EditText {
         blockSoftKey = false;
     }
 
-    private void clearText() {
+    public void clearText() {
         if (getText().length() > 0) {
             setSelection(0);
             getText().clear();
@@ -302,11 +309,16 @@ public class EditDigits extends EditText {
     }
 
     private void doAfterChanged(Editable s) {
+        doAfterChanged(s.toString());
+    }
+
+    private void doAfterChanged(String source) {
         if (blockSoftKey) {
             return;
         }
-        recordCursorPosition(s.toString());
-        String str = s.toString().replaceAll(",", "");
+
+        recordCursorPosition(source);
+        String str = source.replaceAll(",", "");
         if (TextUtils.isEmpty(str)) {
             clearText();
             return;
@@ -408,7 +420,7 @@ public class EditDigits extends EditText {
         }
     }
 
-    //BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
+    BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
 
 
     private InputFilter filterNumberMinus = new InputFilter() {
