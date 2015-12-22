@@ -133,6 +133,10 @@ public class EditDigits extends EditText {
     public double getValue() {
         String str = getText().toString().replaceAll(",", "");
 
+        if (TextUtils.isEmpty(str)) {
+            return 0;
+        }
+
         String front;
         String end;
         int firstIndex = str.indexOf(period);
@@ -188,10 +192,7 @@ public class EditDigits extends EditText {
     }
 
     private void sendSetText(String value) {
-        Message message = new Message();
-        message.what = SET_COMMA;
-        message.obj = value;
-        handler.sendMessage(message);
+        handler.sendMessage(Message.obtain(handler, SET_COMMA, value));
     }
 
     private void bringCursorToLastPosition() {
@@ -283,6 +284,12 @@ public class EditDigits extends EditText {
         int firstIndex = str.indexOf(period);
         if (firstIndex == 0) {
             sendSetText("0.");
+            return;
+        }
+
+        if (source.startsWith("00") && source.length() == 2) {
+            previousCursorPosition = 1;
+            sendSetText("0");
             return;
         }
 
@@ -394,7 +401,7 @@ public class EditDigits extends EditText {
         private final WeakReference<EditDigits> weakBody;
 
         public EditDigitsHandler(EditDigits klass) {
-            weakBody = new WeakReference<EditDigits>(klass);
+            weakBody = new WeakReference<>(klass);
         }
 
         @Override
