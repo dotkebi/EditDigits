@@ -291,6 +291,13 @@ public class EditDigits extends EditText {
             previousCursorPosition = 1;
             sendSetText("0");
             return;
+        } else if (source.startsWith("0")
+                && source.length() == 2) {
+            if (source.charAt(1) != period
+                    && '0' <= source.charAt(1)
+                    && source.charAt(1) <= '9'
+                    )
+                --previousCursorPosition;
         }
 
         String front;
