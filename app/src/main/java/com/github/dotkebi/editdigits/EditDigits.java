@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
  * @author by dotkebi@gmail.com on 2015-09-23.
  */
 public class EditDigits extends EditText {
+    private static final int REMOVE_COMMA = 7463;
     private static final int SET_COMMA = 7462;
     private static final int BRING_CURSOR_TO_LAST_POSITION = 7461;
     private static final int REMOVE_FIRST_CHAR_AT_CURSOR_POSITION = 7460;
@@ -50,6 +51,7 @@ public class EditDigits extends EditText {
     //private boolean blockHardKey;
     private boolean hasFocus;
     private boolean autoHideKeyboard;
+    private boolean formatWhileInput;
 
     public EditDigits(Context context) {
         super(context);
@@ -62,10 +64,10 @@ public class EditDigits extends EditText {
     }
 
     private void init(Context context, AttributeSet attrs) {
-        init(context);
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
         if (a != null) {
             autoHideKeyboard = a.getBoolean(R.styleable.EditDigits_autoHideKeyboard, false);
+            formatWhileInput = a.getBoolean(R.styleable.EditDigits_formatWhileInput, false);
             a.recycle();
         }
 
@@ -75,6 +77,8 @@ public class EditDigits extends EditText {
             this.setRawInputType(type);
             this.setTextIsSelectable(true);
         }
+
+        init(context);
     }
 
     private void init(Context context) {
@@ -86,8 +90,10 @@ public class EditDigits extends EditText {
         handler = new EditDigitsHandler(this);
 
         setFilters(new InputFilter[]{filterNumberMinus});
-        addTextChangedListener(new DigitsWatcher());
         setKeyListener(DigitsKeyListener.getInstance("0123456789,.-"));
+        if (formatWhileInput) {
+            addTextChangedListener(new DigitsWatcher());
+        }
     }
 
     @Override
@@ -117,12 +123,17 @@ public class EditDigits extends EditText {
             hasFocus = false;
             doAfterChanged(getText());
         }
+        if (!formatWhileInput && focused) {
+            hasFocus = true;
+            handler.sendEmptyMessage(REMOVE_COMMA);
+            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);
+        }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DEL) {
+        if (keyCode == KeyEvent.KEYCODE_DEL && formatWhileInput) {
             removeFirstCharAtCursorPosition();
             return true;
         }
@@ -207,6 +218,11 @@ public class EditDigits extends EditText {
         setSelection(getText().length());
         setCursorVisible(true);
         blockSoftKey = false;
+    }
+
+    private void removeComma() {
+        String value = getText().toString().replaceAll(",", "");
+        setText(value);
     }
 
     private void doSetText(String value) {
@@ -431,6 +447,10 @@ public class EditDigits extends EditText {
                     String value = (String) msg.obj;
                     klass.doSetText(value);
                     //sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
+                    break;
+
+                case REMOVE_COMMA:
+                    klass.removeComma();
                     break;
 
                 case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:

@@ -2,7 +2,7 @@
 
     <declare-styleable name="EditDigits">
         <attr name="autoHideKeyboard" format="boolean"/>
+        <attr name="formatWhileInput" format="boolean"/>
     </declare-styleable>
-
 
 </resources>
