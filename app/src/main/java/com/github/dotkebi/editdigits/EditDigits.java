@@ -51,24 +51,18 @@ public class EditDigits extends EditText {
     private boolean hasFocus;
     private boolean autoHideKeyboard;
 
+    public EditDigits(Context context) {
+        super(context);
+        init(context);
+    }
+
     public EditDigits(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context, attrs);
     }
 
     private void init(Context context, AttributeSet attrs) {
-        this.context = context;
-        blockSoftKey = false;
-        //blockHardKey = false;
-        hasFocus = false;
-
-        handler = new EditDigitsHandler(this);
-
-        setGravity(Gravity.RIGHT);
-        setFilters(new InputFilter[]{filterNumberMinus});
-        addTextChangedListener(new DigitsWatcher());
-        setKeyListener(DigitsKeyListener.getInstance("0123456789,.-"));
-
+        init(context);
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
         if (a != null) {
             autoHideKeyboard = a.getBoolean(R.styleable.EditDigits_autoHideKeyboard, false);
@@ -81,6 +75,19 @@ public class EditDigits extends EditText {
             this.setRawInputType(type);
             this.setTextIsSelectable(true);
         }
+    }
+
+    private void init(Context context) {
+        this.context = context;
+        blockSoftKey = false;
+        //blockHardKey = false;
+        hasFocus = false;
+
+        handler = new EditDigitsHandler(this);
+
+        setFilters(new InputFilter[]{filterNumberMinus});
+        addTextChangedListener(new DigitsWatcher());
+        setKeyListener(DigitsKeyListener.getInstance("0123456789,.-"));
     }
 
     @Override
