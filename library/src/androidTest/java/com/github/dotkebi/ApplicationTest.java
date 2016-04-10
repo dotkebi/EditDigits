@@ -1,4 +1,4 @@
-package com.github.dotkebi.editdigits;
+package com.github.dotkebi;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

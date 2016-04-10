@@ -14,11 +14,12 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.method.DigitsKeyListener;
 import android.util.AttributeSet;
-import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+
+import com.github.dotkebi.R;
 
 import java.lang.ref.WeakReference;
 import java.math.BigDecimal;
