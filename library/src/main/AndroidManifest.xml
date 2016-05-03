@@ -1,6 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.github.dotkebi">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.github.dotkebi"
+    android:versionCode="1"
+    android:versionName="1.0.0"
+    >
 
-    <application android:allowBackup="true" android:label="@string/app_name"
+    <application
+        android:label="@string/app_name"
+        android:allowBackup="true"
         android:supportsRtl="true">
 
     </application>
