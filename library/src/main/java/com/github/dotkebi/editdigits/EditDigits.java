@@ -271,6 +271,8 @@ public class EditDigits extends EditText {
             previousCursorPosition = previousCursorPosition - quantityOfPeriodBeforeCursor;
             if (previousCursorPosition < 0) {
                 previousCursorPosition = 0;
+            } else if (previousCursorPosition > msg.length()) {
+                previousCursorPosition = msg.length();
             }
             quantityOfPeriodBeforeCursor = 0;
             setSelection(previousCursorPosition);
